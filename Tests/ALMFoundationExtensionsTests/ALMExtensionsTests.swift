@@ -1,70 +1,127 @@
-import XCTest
+import Testing
 import Foundation
 @testable import ALMFoundationExtensions
 
-final class DateFormatterTests: XCTestCase {
-    func testShortDateFormatterUsesShortStyles() {
-        XCTAssertEqual(DateFormatter.shortDateTimeFormatter.dateStyle, .short)
-        XCTAssertEqual(DateFormatter.shortDateTimeFormatter.timeStyle, .short)
-        XCTAssertFalse(DateFormatter.shortDateTimeFormatter.doesRelativeDateFormatting)
+@Suite struct DateFormatterTests {
+    @Test func shortDateFormatterUsesShortStyles() {
+        #expect(DateFormatter.shortDateTimeFormatter.dateStyle == .short)
+        #expect(DateFormatter.shortDateTimeFormatter.timeStyle == .short)
+        #expect(!DateFormatter.shortDateTimeFormatter.doesRelativeDateFormatting)
     }
 
-    func testMediumDateFormatterUsesMediumAndShortStyles() {
-        XCTAssertEqual(DateFormatter.mediumDateFormatter.dateStyle, .medium)
-        XCTAssertEqual(DateFormatter.mediumDateFormatter.timeStyle, .short)
-        XCTAssertEqual(DateFormatter.mediumDateFormatter.locale.identifier, "en_US_POSIX")
+    @Test func mediumDateFormatterUsesMediumAndShortStyles() {
+        #expect(DateFormatter.mediumDateFormatter.dateStyle == .medium)
+        #expect(DateFormatter.mediumDateFormatter.timeStyle == .short)
+        #expect(DateFormatter.mediumDateFormatter.locale.identifier == "en_US_POSIX")
     }
 }
 
-final class DateExtensionsTests: XCTestCase {
-    func testDaysBetweenCalculatesCorrectDifference() {
+@Suite struct DateExtensionsTests {
+    @Test func daysBetweenCalculatesCorrectDifference() {
         let calendar = Calendar.current
         let date1 = calendar.date(from: DateComponents(year: 2024, month: 1, day: 1))!
         let date2 = calendar.date(from: DateComponents(year: 2024, month: 1, day: 10))!
         
-        XCTAssertEqual(Date.daysBetween(earlierDate: date1, and: date2), 9)
-        XCTAssertEqual(Date.daysBetween(earlierDate: date2, and: date1), -9)
+        #expect(Date.daysBetween(earlierDate: date1, and: date2) == 9)
+        #expect(Date.daysBetween(earlierDate: date2, and: date1) == -9)
     }
 }
 
-final class NumberFormatterTests: XCTestCase {
-    func testCurrencyNumberFormatterSettings() {
+@Suite struct NumberFormatterTests {
+    @Test func currencyNumberFormatterSettings() {
         let formatter = NumberFormatter.currencyNumberFormatter
-        XCTAssertEqual(formatter.numberStyle, .currency)
-        XCTAssertEqual(formatter.minimumFractionDigits, 2)
-        XCTAssertEqual(formatter.maximumFractionDigits, 2)
+        #expect(formatter.numberStyle == .currency)
+        #expect(formatter.minimumFractionDigits == 2)
+        #expect(formatter.maximumFractionDigits == 2)
     }
 }
 
-final class StringExtensionsTests: XCTestCase {
-    func testIsAlphanumeric() {
-        XCTAssertTrue("abc123".isAlphanumeric)
-        XCTAssertTrue("abc".isAlphanumeric)
-        XCTAssertTrue("123".isAlphanumeric)
-        XCTAssertTrue("abc 123".isAlphanumeric)
-        XCTAssertFalse("".isAlphanumeric)
-        XCTAssertFalse("!@#".isAlphanumeric)
+@Suite struct StringExtensionsTests {
+    @Test func isAlphanumeric() {
+        #expect("abc123".isAlphanumeric)
+        #expect("abc".isAlphanumeric)
+        #expect("123".isAlphanumeric)
+        #expect(!"abc 123".isAlphanumeric)
+        #expect(!"".isAlphanumeric)
+        #expect(!"!@#".isAlphanumeric)
     }
 
-    func testIsNumeric() {
-        XCTAssertTrue("123".isNumeric)
-        XCTAssertFalse("123.45".isNumeric)
-        XCTAssertFalse("abc123".isNumeric) // No longer true, must be digits only
-        XCTAssertFalse("abc".isNumeric)
-        XCTAssertFalse("".isNumeric)
+    @Test func isNumeric() {
+        #expect("123".isNumeric)
+        #expect(!"123.45".isNumeric)
+        #expect(!"abc123".isNumeric)
+        #expect(!"abc".isNumeric)
+        #expect(!"".isNumeric)
     }
 
-    func testIsLettersOnly() {
-        XCTAssertTrue("abc".isLettersOnly)
-        XCTAssertTrue("abc!".isLettersOnly)
-        XCTAssertFalse("abc123".isLettersOnly)
-        XCTAssertFalse("".isLettersOnly)
-        XCTAssertFalse("!?.".isLettersOnly)
+    @Test func isLettersOnly() {
+        #expect("abc".isLettersOnly)
+        #expect(!"abc!".isLettersOnly)
+        #expect(!"abc123".isLettersOnly)
+        #expect(!"".isLettersOnly)
+        #expect(!"!?.".isLettersOnly)
     }
 
-    func testDeviceLanguage() throws {
+    @Test func deviceLanguage() throws {
         let language = try String.deviceLanguage()
-        XCTAssertNotNil(language)
-        XCTAssertFalse(language?.isEmpty ?? true)
+        #expect(language != nil)
+        #expect(language?.isEmpty == false)
+    }
+}
+
+@Suite struct URLRequestExtensionsTests {
+    @Test func cURLDescriptionWithGetRequest() {
+        let url = URL(string: "https://api.example.com/v1/users")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        let curl = request.cURLDescription
+        #expect(curl.contains("curl -i"))
+        #expect(curl.contains("-X GET"))
+        #expect(curl.contains("-H \"Accept: application/json\""))
+        #expect(curl.contains("\"https://api.example.com/v1/users\""))
+    }
+    
+    @Test func cURLDescriptionRedactsAuthorizationHeader() {
+        let url = URL(string: "https://api.example.com/v1/users")!
+        var request = URLRequest(url: url)
+        request.setValue("Bearer secret_token_123", forHTTPHeaderField: "Authorization")
+        
+        let curl = request.cURLDescription
+        #expect(curl.contains("-H \"Authorization: Bearer [REDACTED]\""))
+        #expect(!curl.contains("secret_token_123"))
+    }
+    
+    @Test func cURLDescriptionIncludesHttpBody() {
+        let url = URL(string: "https://api.example.com/v1/users")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let json = "{\"name\":\"John Doe\"}"
+        request.httpBody = json.data(using: .utf8)
+        
+        let curl = request.cURLDescription
+        #expect(curl.contains("-d \"{\\\"name\\\":\\\"John Doe\\\"}\""))
+    }
+}
+
+@Suite struct DataExtensionsTests {
+    @Test func rawJSONStringWithValidJSON() {
+        let jsonDict = ["name": "Alice", "age": 30] as [String : Any]
+        let data = try! JSONSerialization.data(withJSONObject: jsonDict, options: .prettyPrinted)
+        
+        let rawJSON = data.rawJSONString
+        // It should be minified, so no newlines or indentation spaces
+        #expect(!rawJSON.contains("\n"))
+        #expect(rawJSON.contains("\"name\":\"Alice\"") || rawJSON.contains("\"age\":30"))
+    }
+    
+    @Test func rawJSONStringWithInvalidJSONFallback() {
+        let rawText = "Hello World! This is not JSON."
+        let data = rawText.data(using: .utf8)!
+        
+        let rawJSON = data.rawJSONString
+        #expect(rawJSON == rawText)
     }
 }
